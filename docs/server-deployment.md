@@ -51,3 +51,47 @@ copy of cookies so the source secret need not be writable. Cookies can expire;
 never commit or log them.
 
 Validation records are stored under `diagnostics/20261109` on the server.
+
+## Temporary HTTPS session setup (November 9)
+
+The temporary `youtube-bot-setup.service` serves the upload UI only on
+`127.0.0.1:8794`. An nginx location include exposes it under
+`/youtube-bot-setup/` on the canonical HTTPS domain. A random, unguessable URL
+is stored only in root-readable `diagnostics/20261109/setup-link.txt`; it is
+never committed. Its expiration is recorded in `cookie-setup-meta.json`.
+The URL expires two hours after creation and permits one valid upload.
+The helper service stops after 7,500 seconds and is not enabled at boot.
+
+Upload requirements: an active YouTube session in Netscape format, up to 1 MiB.
+The receiver validates its syntax, discards cookies for every other site and
+expired cookies, then atomically stores a 0600 file at
+`/var/lib/youtube-bot-setup/youtube-cookies.txt` inside a 0700 directory owned
+by `youtube-bot`. It never provides cookie readback. Invalid capability URLs,
+wrong origins, guest-only sessions and subsequent uploads are rejected.
+Access logs for the endpoint are disabled; responses are not cached, and
+referrers include only the origin, never the capability URL path. Chrome sends
+a null Origin on form submissions under `no-referrer`, so `strict-origin` is
+required for the strict form Origin check to work.
+
+The protected bot environment now points `YOUTUBE_COOKIES_FILE` to that
+private file. The bot uses anonymous requests while it is absent and picks up
+the uploaded session on the next download without another restart. File receipt
+does not establish that YouTube authentication/download succeeds: rerun the
+short-video download probe as `youtube-bot` after the user's upload and inspect
+only the pass/fail result, never cookie contents. If authentication still fails,
+a new session or authorized network connection may be needed.
+
+The upload page contains the Chrome export steps from the upstream yt-dlp
+YouTube cookie guide. Keep the capability URL and cookie file out of chat logs,
+Git and general access logs. It is acceptable to share the private setup link
+with the authorized owner; never share the uploaded cookies. After completion,
+remove `/etc/nginx/youtube-bot-setup.location`'s include from the canonical
+HTTPS server block, validate nginx, reload it and stop the helper unit. Retain
+the private cookie file for the bot; the upload URL's expiry does not revoke
+the YouTube session.
+
+Validation: four standard-library tests cover cookie filtering, expiry/guest
+rejection, capability protection, cross-origin rejection, single upload,
+no readback and private file permissions. A Chromium form upload with entirely
+synthetic cookies passed. Public HTTPS GET, invalid URL rejection and Logic Coin
+API health were also checked. No real YouTube cookies have been supplied yet.

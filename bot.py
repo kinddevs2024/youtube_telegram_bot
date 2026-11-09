@@ -104,7 +104,7 @@ def download(url, quality, folder):
     }
 
     cookie_source = os.getenv("YOUTUBE_COOKIES_FILE")
-    if cookie_source:
+    if cookie_source and Path(cookie_source).is_file():
         # yt-dlp updates its cookie jar; keep the supplied secret read-only.
         cookie_copy = Path(folder) / "youtube-cookies.txt"
         shutil.copyfile(cookie_source, cookie_copy)

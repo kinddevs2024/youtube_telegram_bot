@@ -1,0 +1,26 @@
+[Unit]
+Description=Temporary private YouTube session upload
+After=network.target
+
+[Service]
+Type=simple
+User=youtube-bot
+Group=youtube-bot
+WorkingDirectory=/srv/apps/youtube-telegram-bot/current
+EnvironmentFile=/srv/apps/youtube-telegram-bot/shared/setup.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/srv/apps/youtube-telegram-bot/venv/bin/python /srv/apps/youtube-telegram-bot/current/deploy/cookie_setup.py
+StateDirectory=youtube-bot-setup
+StateDirectoryMode=0700
+UMask=0077
+RuntimeMaxSec=7500
+Restart=no
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=128M
+CPUQuota=25%
+TasksMax=8
