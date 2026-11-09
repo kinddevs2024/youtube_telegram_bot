@@ -1,0 +1,38 @@
+[Unit]
+Description=YouTube Telegram downloader bot
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=youtube-bot
+Group=youtube-bot
+WorkingDirectory=/srv/apps/youtube-telegram-bot/current
+EnvironmentFile=/srv/apps/youtube-telegram-bot/shared/bot.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=TMPDIR=/var/cache/youtube-telegram-bot
+ExecStart=/srv/apps/youtube-telegram-bot/venv/bin/python /srv/apps/youtube-telegram-bot/current/bot.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=90
+UMask=0077
+StateDirectory=youtube-telegram-bot
+StateDirectoryMode=0700
+CacheDirectory=youtube-telegram-bot
+CacheDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=1G
+CPUQuota=100%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

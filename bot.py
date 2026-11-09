@@ -3,6 +3,7 @@ import os
 import re
 import asyncio
 import tempfile
+import shutil
 from pathlib import Path
 
 import yt_dlp
@@ -20,7 +21,8 @@ from telegram.ext import (
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
-MAX_SIZE = 1000 * 1024 * 1024
+# The hosted Telegram Bot API accepts uploads up to 50 MB.
+MAX_SIZE = 49 * 1024 * 1024
 
 CAPTION = "👉 @videola_yukla_bot"
 
@@ -70,6 +72,13 @@ async def receive_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def download(url, quality, folder):
 
+    if quality not in {"360", "480", "720", "1080", "best"}:
+        raise ValueError("Video sifati noto‘g‘ri.")
+
+    def check_size(progress):
+        if progress.get("downloaded_bytes", 0) > MAX_SIZE:
+            raise ValueError("Video 49 MB dan katta. Pastroq sifatni tanlang.")
+
     if quality == "best":
         fmt = "bestvideo*+bestaudio/best"
     else:
@@ -88,8 +97,19 @@ def download(url, quality, folder):
         "no_warnings": False,
         "retries": 3,
         "fragment_retries": 3,
+        "socket_timeout": 30,
+        "progress_hooks": [check_size],
+        "js_runtimes": {"node": {"path": shutil.which("node") or "node"}},
         "format_sort": ["res", "ext:mp4:m4a"],
     }
+
+    cookie_source = os.getenv("YOUTUBE_COOKIES_FILE")
+    if cookie_source:
+        # yt-dlp updates its cookie jar; keep the supplied secret read-only.
+        cookie_copy = Path(folder) / "youtube-cookies.txt"
+        shutil.copyfile(cookie_source, cookie_copy)
+        cookie_copy.chmod(0o600)
+        options["cookiefile"] = str(cookie_copy)
 
     with yt_dlp.YoutubeDL(options) as ydl:
         ydl.extract_info(url, download=True)
@@ -102,12 +122,12 @@ def download(url, quality, folder):
     ]
 
     if not files:
-        raise Exception("Video fayli topilmadi.")
+        raise Exception("Video yuklanmadi yoki 49 MB dan katta. Pastroq sifatni tanlang.")
 
     video = max(files, key=lambda f: f.stat().st_size)
 
     if video.stat().st_size > MAX_SIZE:
-        raise Exception("Video 1000 MB dan katta.")
+        raise Exception("Video 49 MB dan katta. Pastroq sifatni tanlang.")
 
     return video
 
@@ -175,7 +195,7 @@ def main():
     )
 
     app.add_handler(
-        CallbackQueryHandler(choose_quality)
+        CallbackQueryHandler(choose_quality, pattern=r"^(360|480|720|1080|best)$")
     )
 
     print("BOT ISHGA TUSHDI!")
